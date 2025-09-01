@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trading Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1f2937;
+            --light: #f8fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--light);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-card {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .agent-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .confidence-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Trading System Dashboard</h1>
+            <p>Real-time monitoring and control</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="startSystem()">▶️ Start System</button>
+            <button class="btn btn-danger" onclick="stopSystem()">⏹️ Stop System</button>
+            <button class="btn btn-danger" onclick="emergencyStop()">🚨 Emergency Stop</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card stat-card">
+                <div class="stat-label">Active Agents</div>
+                <div class="stat-number" id="active-agents">0</div>
+                <div class="stat-label">/ 20 Total</div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-label">System Status</div>
+                <div class="stat-number" id="system-status">OFFLINE</div>
+                <div class="stat-label" id="last-update">Last update: -</div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-label">Total Balance</div>
+                <div class="stat-number" id="total-balance">$0</div>
+                <div class="stat-label" id="total-profit">P/L: $0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Performance Chart</h2>
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🤖 Trading Agents</h2>
+            <div class="agent-grid" id="agents-container">
+                <!-- Agents will be populated here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Market Data</h2>
+            <div id="market-data">
+                <!-- Market data will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let performanceChart;
+        let updateInterval;
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        // Update dashboard data
+        async function updateDashboard() {
+            try {
+                const response = await axios.get('/status');
+                const data = response.data;
+                
+                // Update basic stats
+                document.getElementById('active-agents').textContent = data.active_agents;
+                document.getElementById('system-status').textContent = 
+                    data.system_running ? 'ONLINE' : 'OFFLINE';
+                document.getElementById('system-status').style.color = 
+                    data.system_running ? '#10b981' : '#ef4444';
+                
+                document.getElementById('last-update').textContent = 
+                    `Last update: ${new Date().toLocaleTimeString()}`;
+                
+                // Update agents display
+                updateAgentsDisplay(data.agents);
+                
+                // Update performance chart
+                updatePerformanceChart(data);
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+
+        // Update agents display
+        function updateAgentsDisplay(agents) {
+            const container = document.getElementById('agents-container');
+            container.innerHTML = '';
+            
+            Object.entries(agents).forEach(([agentId, agent]) => {
+                const agentCard = document.createElement('div');
+                agentCard.className = 'agent-card';
+                
+                const confidence = agent.emotions?.confidence * 100 || 0;
+                
+                agentCard.innerHTML = `
+                    <h3>Agent ${agentId.split('_')[1]}</h3>
+                    <div>${agent.strategy}</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${confidence}%"></div>
+                    </div>
+                    <div>Confidence: ${confidence.toFixed(0)}%</div>
+                    <div>${agent.active ? '🟢 Active' : '🔴 Inactive'}</div>
+                `;
+                
+                container.appendChild(agentCard);
+            });
+        }
+
+        // Update performance chart
+        function updatePerformanceChart(data) {
+            // Simulate portfolio growth for demo
+            const currentValue = 10000 + (Math.random() * 2000 - 1000);
+            performanceChart.data.labels.push(new Date().toLocaleTimeString());
+            performanceChart.data.datasets[0].data.push(currentValue);
+            
+            // Keep only last 20 data points
+            if (performanceChart.data.labels.length > 20) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+            }
+            
+            performanceChart.update();
+            
+            // Update balance display
+            document.getElementById('total-balance').textContent = 
+                `$${currentValue.toFixed(2)}`;
+            document.getElementById('total-profit').textContent = 
+                `P/L: $${(currentValue - 10000).toFixed(2)}`;
+        }
+
+        // Control functions
+        async function startSystem() {
+            try {
+                await axios.post('/start');
+                alert('System started successfully');
+                updateDashboard();
+            } catch (error) {
+                alert('Error starting system: ' + error.response?.data?.detail || error.message);
+            }
+        }
+
+        async function stopSystem() {
+            try {
+                await axios.post('/stop');
+                alert('System stopped successfully');
+                updateDashboard();
+            } catch (error) {
+                alert('Error stopping system: ' + error.response?.data?.detail || error.message);
+            }
+        }
+
+        async function emergencyStop() {
+            const token = prompt('Enter emergency stop token:');
+            if (token) {
+                try {
+                    await axios.post('/kill', null, {
+                        params: { auth_token: token }
+                    });
+                    alert('🚨 EMERGENCY STOP ACTIVATED');
+                    updateDashboard();
+                } catch (error) {
+                    alert('Error: ' + error.response?.data?.detail || error.message);
+                }
+            }
+        }
+
+        // Initialize and start updating
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            updateDashboard();
+            updateInterval = setInterval(updateDashboard, 5000); // Update every 5 seconds
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            clearInterval(updateInterval);
+        });
+    </script>
+</body>
+  </html>
