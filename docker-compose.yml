@@ -1,73 +1,15 @@
 version: '3.8'
-
 services:
   redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
+    image: redis:alpine
+    ports: ["6379:6379"]
   mongodb:
     image: mongo:6
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: forex_mas
-    restart: unless-stopped
-    healthcheck:
-      test: echo 'db.stats().ok' | mongosh localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  trading-app:
+    ports: ["27017:27017"]
+  app:
     build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      redis:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+    ports: ["8000:8000"]
+    depends_on: [redis, mongodb]
     environment:
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
       - MONGO_URI=mongodb://mongodb:27017/forex_mas
-      - KILL_SWITCH_TOKEN=${KILL_SWITCH_TOKEN}
-      - ALPHA_VANTAGE_KEY=${ALPHA_VANTAGE_KEY}
-      - MT5_ACCOUNT_LOGIN=${MT5_ACCOUNT_LOGIN}
-      - MT5_ACCOUNT_PASSWORD=${MT5_ACCOUNT_PASSWORD}
-      - MT5_ACCOUNT_SERVER=${MT5_ACCOUNT_SERVER}
-      - LOG_LEVEL=INFO
-      - ENVIRONMENT=production
-      - EVOLUTION_CYCLE_INTERVAL=100
-      - GENETIC_POPULATION_SIZE=50
-      - MUTATION_RATE=0.15
-      - LEARNING_RATE=0.01
-    volumes:
-      - .:/app
-    restart: unless-stopped
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/system/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  redis_data:
-    driver: local
-  mongo_data:
-    driver: local
