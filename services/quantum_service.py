@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 import logging
 import asyncio
 from datetime import datetime
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,8 @@ class QuantumTradingService:
         self.quantum_available = self._check_quantum_dependencies()
         self.circuit_depth = 5
         self.qubit_count = 8
+        self.quantum_cache = {}
+        self.cache_timeout = 300  # 5 minutes
         
     def _check_quantum_dependencies(self) -> bool:
         """Check if quantum computing dependencies are available"""
@@ -27,8 +30,14 @@ class QuantumTradingService:
             logger.warning(f"Quantum setup failed: {e}. Using classical simulation.")
             return False
     
-    def generate_quantum_random(self) -> float:
+    def generate_quantum_random(self, cache_key: str = None) -> float:
         """Generate random number using quantum circuit or classical fallback"""
+        # Check cache first
+        if cache_key and cache_key in self.quantum_cache:
+            cached = self.quantum_cache[cache_key]
+            if time.time() - cached['timestamp'] < self.cache_timeout:
+                return cached['value']
+        
         if self.quantum_available:
             try:
                 from qiskit import QuantumCircuit, Aer, execute
@@ -52,14 +61,35 @@ class QuantumTradingService:
                 
                 # Convert to decimal between 0 and 1
                 quantum_number = int(list(result.keys())[0], 2)
-                return quantum_number / (2 ** self.qubit_count - 1)
+                random_value = quantum_number / (2 ** self.qubit_count - 1)
+                
+                # Cache the result
+                if cache_key:
+                    self.quantum_cache[cache_key] = {
+                        'value': random_value,
+                        'timestamp': time.time()
+                    }
+                
+                return random_value
                 
             except Exception as e:
                 logger.error(f"Quantum random generation failed: {e}")
-                return random.random()
+                return self._classical_fallback(cache_key)
         else:
-            # Classical fallback with cryptographic-quality PRNG
-            return random.SystemRandom().random()
+            return self._classical_fallback(cache_key)
+    
+    def _classical_fallback(self, cache_key: str = None) -> float:
+        """Classical fallback with cryptographic-quality PRNG"""
+        random_value = random.SystemRandom().random()
+        
+        # Cache the result
+        if cache_key:
+            self.quantum_cache[cache_key] = {
+                'value': random_value,
+                'timestamp': time.time()
+            }
+        
+        return random_value
     
     def quantum_portfolio_optimization(self, returns_matrix: np.ndarray, 
                                      risk_aversion: float = 0.5) -> np.ndarray:
@@ -70,10 +100,15 @@ class QuantumTradingService:
         
         if self.quantum_available:
             try:
-                # Quantum-inspired optimization (simplified)
-                # This would be replaced with actual quantum annealing in production
-                weights = np.array([self.generate_quantum_random() for _ in range(n_assets)])
-                weights = weights / weights.sum()
+                # Quantum-inspired optimization using multiple quantum random numbers
+                quantum_weights = np.array([self.generate_quantum_random() for _ in range(n_assets)])
+                
+                # Apply risk aversion
+                adjusted_weights = quantum_weights * (1 - risk_aversion)
+                
+                # Normalize to sum to 1
+                weights = adjusted_weights / adjusted_weights.sum()
+                
                 return weights
                 
             except Exception as e:
@@ -91,8 +126,11 @@ class QuantumTradingService:
         
         # Simple inverse volatility weighting
         volatilities = np.sqrt(np.diag(cov_matrix))
-        weights = 1 / volatilities
+        weights = 1 / (volatilities + 1e-6)  # Avoid division by zero
         weights = weights / weights.sum()
+        
+        # Apply risk aversion
+        weights = weights * (1 - risk_aversion)
         
         return weights
     
@@ -129,12 +167,14 @@ class QuantumTradingService:
         """
         Generate trading signal using quantum-enhanced analysis
         """
+        cache_key = f"{symbol}_{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+        
         # Get quantum market prediction
         prices = market_data.get('prices', [])
         prediction = self.quantum_market_prediction(np.array(prices))
         
         # Generate signal strength based on quantum randomness
-        signal_strength = self.generate_quantum_random() * prediction['confidence']
+        signal_strength = self.generate_quantum_random(cache_key) * prediction['confidence']
         
         # Determine signal direction
         if prediction['direction'] > 0.1:
@@ -150,8 +190,14 @@ class QuantumTradingService:
             'confidence': prediction['confidence'],
             'quantum_score': self.generate_quantum_random(),
             'timestamp': datetime.utcnow().isoformat(),
-            'quantum_used': self.quantum_available
+            'quantum_used': self.quantum_available,
+            'cache_key': cache_key
         }
+    
+    def clear_cache(self):
+        """Clear quantum cache"""
+        self.quantum_cache = {}
+        logger.info("Quantum cache cleared")
 
 # Global instance
 quantum_service = QuantumTradingService()
