@@ -43,11 +43,17 @@ services:
       - REDIS_PORT=6379
       - MONGO_URI=mongodb://mongodb:27017/forex_mas
       - KILL_SWITCH_TOKEN=MySecretToken123!
+      - ALPHA_VANTAGE_KEY=${ALPHA_VANTAGE_KEY:-demo}
+      - MT5_ACCOUNT_LOGIN=${MT5_ACCOUNT_LOGIN:-}
+      - MT5_ACCOUNT_PASSWORD=${MT5_ACCOUNT_PASSWORD:-}
+      - MT5_ACCOUNT_SERVER=${MT5_ACCOUNT_SERVER:-}
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
     volumes:
       - .:/app
-    restart: unless-stopped
+    restart: unless_stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/system/health"]
       interval: 30s
       timeout: 10s
       retries: 3
