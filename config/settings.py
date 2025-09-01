@@ -31,6 +31,18 @@ class Settings:
     # Performance Monitoring
     PERFORMANCE_UPDATE_INTERVAL = int(os.getenv('PERFORMANCE_UPDATE_INTERVAL', 300))
     
+    # API Keys
+    ALPHA_VANTAGE_KEY = os.getenv('ALPHA_VANTAGE_KEY', 'demo')
+    OANDA_API_KEY = os.getenv('OANDA_API_KEY', '')
+    OANDA_ACCOUNT_ID = os.getenv('OANDA_ACCOUNT_ID', '')
+    FX_SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'EURGBP']
+    DATA_UPDATE_INTERVAL = int(os.getenv('DATA_UPDATE_INTERVAL', 60))
+    
+    # MT5 Settings
+    MT5_ACCOUNT_LOGIN = os.getenv('MT5_ACCOUNT_LOGIN', '')
+    MT5_ACCOUNT_PASSWORD = os.getenv('MT5_ACCOUNT_PASSWORD', '')
+    MT5_ACCOUNT_SERVER = os.getenv('MT5_ACCOUNT_SERVER', '')
+    
     @property
     def database_available(self):
         return all([self.REDIS_HOST, self.MONGO_URI])
