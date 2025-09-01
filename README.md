@@ -1,11 +1,31 @@
-# Forex AI Trading System 🤖
+# 🤖 Forex AI Trading System
 
-Advanced Forex trading with AI agents using machine learning.
+Advanced AI-powered Forex trading system with quantum computing, real market data, and emotional intelligence.
 
-## Quick Start
+## 🚀 Features
+
+- **20 AI Trading Agents** with different strategies
+- **Quantum Computing** enhanced decision making
+- **Real Market Data** from Alpha Vantage API
+- **MetaTrader5 Integration** for live trading
+- **Emotional Intelligence** algorithms
+- **Web Dashboard** for real-time monitoring
+- **Docker Containerization** for easy deployment
+- **CI/CD Pipeline** for automated testing and deployment
+
+## 📦 Quick Start
+
+### With Docker (Recommended)
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Clone the repository
+git clone https://github.com/your-username/forex-mas-system.git
+cd forex-mas-system
 
-# Run the system
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# Copy environment file
+cp .env.example .env
+
+# Edit .env with your API keys and settings
+nano .env
+
+# Start the system
+docker-compose up -d
