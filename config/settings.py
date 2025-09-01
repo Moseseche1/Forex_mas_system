@@ -11,7 +11,7 @@ class Settings:
     
     # Security Settings
     KILL_SWITCH_TOKEN = os.getenv('KILL_SWITCH_TOKEN', 'MySecretToken123!')
-    API_TIMEOUT = int(os.getenv('API_TIMEOUT', 30))
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'default_jwt_secret')
     
     # Trading Settings
     MAX_LEVERAGE = float(os.getenv('MAX_LEVERAGE', 10))
@@ -42,6 +42,22 @@ class Settings:
     MT5_ACCOUNT_LOGIN = os.getenv('MT5_ACCOUNT_LOGIN', '')
     MT5_ACCOUNT_PASSWORD = os.getenv('MT5_ACCOUNT_PASSWORD', '')
     MT5_ACCOUNT_SERVER = os.getenv('MT5_ACCOUNT_SERVER', '')
+    
+    # Polymorphic Evolution Settings
+    EVOLUTION_CYCLE_INTERVAL = int(os.getenv('EVOLUTION_CYCLE_INTERVAL', 100))
+    GENETIC_POPULATION_SIZE = int(os.getenv('GENETIC_POPULATION_SIZE', 50))
+    MUTATION_RATE = float(os.getenv('MUTATION_RATE', 0.15))
+    CROSSOVER_RATE = float(os.getenv('CROSSOVER_RATE', 0.7))
+    LEARNING_RATE = float(os.getenv('LEARNING_RATE', 0.01))
+    MIN_CONFIDENCE_THRESHOLD = float(os.getenv('MIN_CONFIDENCE_THRESHOLD', 0.3))
+    MAX_CAUTION_THRESHOLD = float(os.getenv('MAX_CAUTION_THRESHOLD', 0.7))
+    
+    # Reinforcement Learning Settings
+    DRL_HIDDEN_SIZE = int(os.getenv('DRL_HIDDEN_SIZE', 64))
+    DRL_MEMORY_SIZE = int(os.getenv('DRL_MEMORY_SIZE', 10000))
+    DRL_BATCH_SIZE = int(os.getenv('DRL_BATCH_SIZE', 32))
+    DRL_GAMMA = float(os.getenv('DRL_GAMMA', 0.95))
+    DRL_EPSILON_DECAY = float(os.getenv('DRL_EPSILON_DECAY', 0.995))
     
     @property
     def database_available(self):
