@@ -528,4 +528,46 @@ async def emergency_stop(auth_token: str):
         for agent in trading_system.agents:
             agent.active = False
         
-        # Forc
+        
+        # Force shutdown components
+        await market_data_service.close_session()
+        mt5_broker.shutdown_mt5()
+        
+        logger.critical("EMERGENCY STOP ACTIVATED - ALL TRADING HALTED")
+        return {
+            "status": "emergency_stop", 
+            "message": "All trading activities stopped immediately",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Emergency stop failed: {str(e)}")
+
+@app.on_event("startup")
+async def startup_event():
+    """Startup event - initialize system"""
+    logger.info("Polymorphic Forex AI Trading System starting up...")
+    
+    # Auto-start the system in development
+    if not settings.is_production:
+        try:
+            await trading_system.initialize_system()
+            trading_system.is_running = True
+            # Start trading cycle in background
+            asyncio.create_task(trading_system.trading_cycle())
+            logger.info("System auto-started in development mode")
+        except Exception as e:
+            logger.error(f"Auto-start failed: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown event - clean up resources"""
+    logger.info("Shutting down Polymorphic Forex AI Trading System...")
+    try:
+        await trading_system.shutdown()
+    except Exception as e:
+        logger.error(f"Shutdown error: {e}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+```
