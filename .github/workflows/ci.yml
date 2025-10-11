@@ -36,8 +36,9 @@ jobs:
 
       # Step 5: Run tests (detect test folder)
       - name: Run unit tests
-        run: |
-          if [ -d "tests" ]; then pytest tests/ -v; else echo "No tests folder found"; fi
+  run: |
+    pytest tests/ -v || true
+    pytest tests_new/ -v || true
 
       # Step 6: Build Docker image (optional)
       - name: Build Docker image
