@@ -29,3 +29,4 @@ nano .env
 
 # Start the system
 docker-compose up -d
+# Triggering CI workflow test
