@@ -34,11 +34,14 @@ jobs:
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
 
-      # Step 5: Run tests (detect test folder)
+      # Step 5: Run unit tests (both folders)
       - name: Run unit tests
-  run: |
-    pytest tests/ -v || true
-    pytest tests_new/ -v || true
+        run: |
+          echo "Running tests from original folder..."
+          if [ -d "tests" ]; then pytest tests/ -v; else echo "No tests folder found"; fi
+
+          echo "Running tests from new folder..."
+          if [ -d "tests_new" ]; then pytest tests_new/ -v; else echo "No tests_new folder found"; fi
 
       # Step 6: Build Docker image (optional)
       - name: Build Docker image
