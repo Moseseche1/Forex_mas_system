@@ -1,0 +1,44 @@
+name: Forex MAS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧱 Step 1: Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 🐍 Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # ⚙️ Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 🧪 Step 4: Run tests
+      - name: Run unit tests
+        run: |
+          if [ -d "tests" ]; then pytest -v; else echo "No tests folder found"; fi
+
+      # 🐳 Step 5: Build Docker image (optional)
+      - name: Build Docker image
+        run: |
+          if [ -f Dockerfile ]; then docker build -t forex_mas_system .; else echo "No Dockerfile found"; fi
+
+      # 🚀 Step 6: Deploy (placeholder)
+      - name: Deploy placeholder
+        run: |
+          echo "✅ Deployment stage reached — customize this step for your deployment method (e.g. server, cloud, or container registry)."
