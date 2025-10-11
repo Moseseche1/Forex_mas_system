@@ -12,33 +12,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 🧱 Step 1: Check out the code
+      # Step 1: Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🐍 Step 2: Set up Python
+      # Step 2: Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # ⚙️ Step 3: Install dependencies
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements.txt
+          pip install pytest pytest-cov flake8
 
-      # 🧪 Step 4: Run tests
+      # Step 4: Linting
+      - name: Lint code
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+      # Step 5: Run tests (detect Tests folder)
       - name: Run unit tests
         run: |
-          if [ -d "tests" ]; then pytest -v; else echo "No tests folder found"; fi
+          if [ -d "Tests" ]; then pytest Tests/ -v; else echo "No Tests folder found"; fi
 
-      # 🐳 Step 5: Build Docker image (optional)
+      # Step 6: Build Docker image (optional)
       - name: Build Docker image
         run: |
           if [ -f Dockerfile ]; then docker build -t forex_mas_system .; else echo "No Dockerfile found"; fi
 
-      # 🚀 Step 6: Deploy (placeholder)
+      # Step 7: Deploy placeholder
       - name: Deploy placeholder
         run: |
-          echo "✅ Deployment stage reached — customize this step for your deployment method (e.g. server, cloud, or container registry)."
+          echo "✅ Deployment stage reached — customize this step for your deployment method."
