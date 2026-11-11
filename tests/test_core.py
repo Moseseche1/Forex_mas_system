@@ -3,14 +3,14 @@ from core.risk import size_position
 from core.signals import ema,rsi,ema_crossover
 from core.backtest import run_backtest
 def test_position_risk_never_exceeds_one_percent():
- x=size_position(equity=100,risk_fraction=.01,entry_price=1.1,stop_price=1.09,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
+ x=size_position(equity=100,risk_fraction=.01,entry_price=1.1,stop_price=1.099,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
  assert x.approved and x.estimated_loss<=1+1e-9
 def test_reject_minimum_lot_that_breaches_budget():
  x=size_position(equity=10,risk_fraction=.01,entry_price=1.1,stop_price=1.0,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
  assert not x.approved and x.volume_lots==0
 def test_reject_risk_above_one_percent():
  with pytest.raises(ValueError):
-  size_position(equity=100,risk_fraction=.02,entry_price=1.1,stop_price=1.09,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=10,volume_step=.01)
+  size_position(equity=100,risk_fraction=.02,entry_price=1.1,stop_price=1.099,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=10,volume_step=.01)
 def test_ema_and_rsi():
  assert len(ema([1,2,3],2))==3 and rsi(list(range(20)),14)[14]==100
 def test_ema_crossover():
