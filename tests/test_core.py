@@ -23,3 +23,7 @@ def test_backtest_next_bar_entry_and_costs():
  assert out["assumptions"]["live_orders_sent"] is False
 def test_backtest_rejects_invalid_ohlc():
  with pytest.raises(ValueError): run_backtest([{"open":1,"high":.9,"low":.8,"close":1}]*3,[0,0,0])
+
+def test_risk_rejects_non_finite_values():
+ with pytest.raises(ValueError):
+  size_position(equity=float("nan"),risk_fraction=.01,entry_price=1.1,stop_price=1.099,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
