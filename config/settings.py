@@ -29,6 +29,7 @@ class Settings:
     ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY", "")
     OANDA_API_KEY = os.getenv("OANDA_API_KEY", "")
     OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "")
+    OANDA_API_URL = os.getenv("OANDA_API_URL", "https://api-fxpractice.oanda.com").rstrip("/")
     FX_SYMBOLS = os.getenv("FX_SYMBOLS", "EURUSD,GBPUSD,USDJPY").split(",")
 
     @property
