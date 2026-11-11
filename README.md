@@ -1,59 +1,56 @@
-# Olympus FX — Forex Multi-Agent Research Platform
+# Olympus FX — Research and Paper-Trading Platform
 
-A safe foundation for a multi-agent forex research and paper-trading platform.
+## Safety status
+This release is **research/paper-only**. It does not submit broker orders. Legacy MT5 execution modules are disabled compatibility shims. Do not add broker credentials to GitHub or the API container.
 
-## Current safety boundary
-
-- **Paper/research mode only.** This API does not submit broker orders.
-- Live execution is deliberately disabled and must not be enabled by changing a UI setting.
-- No broker credentials are required to run the API.
-- No synthetic market prices are presented as live prices.
-- The API does not auto-start a trading loop on application startup.
-
-The previous implementation mixed generated/demo prices with live MT5 execution, generated random P&L statistics, and attempted broker initialization during startup. Those behaviours are unsuitable for real-money use and have been removed from the API entry point.
+## Capabilities
+- FastAPI health, status and dashboard endpoints.
+- Seven role-labelled research agents (runtime registry only; no autonomous LLM agents yet).
+- Deterministic EMA crossover and RSI calculations.
+- Position sizing from broker tick economics, rounding volume down and rejecting a minimum lot that breaches the risk budget.
+- OHLC backtesting with next-bar entries, spread, slippage, commission and conservative stop-first handling when both stop and target are touched.
+- CSV historical-price ingestion with OHLC validation.
+- Optional OANDA read-only quotes and completed candles. Configure `OANDA_API_KEY`, `OANDA_ACCOUNT_ID`, and optionally `OANDA_API_URL`. Practice API is the default. No order endpoints are implemented.
 
 ## Run locally
-
 ```bash
 python -m venv .venv
 # Windows: .venv\\Scripts\\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Set KILL_SWITCH_TOKEN to a long random value in .env
 uvicorn main:app --reload
 ```
+Open `http://localhost:8000/dashboard` or `/docs`.
 
-Open http://localhost:8000/dashboard or http://localhost:8000/docs.
-
-## Run with Docker
-
+## Docker
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
 ## Tests
-
 ```bash
 pytest -q
 ```
 
 ## API
+- `GET /health`, `GET /status`, `GET /agent/{id}`
+- `POST /start`, `POST /stop`, `POST /kill` (kill requires `X-Admin-Token`)
+- `POST /risk/position-size` — risk-limited lot sizing
+- `POST /backtest` — deterministic OHLC simulation, no broker interaction
+- `POST /signals/ema-crossover` — deterministic research signals
 
-- `GET /health` — process health
-- `GET /status` — runtime and agent status
-- `GET /agent/{id}` — agent metadata
-- `POST /start` — start research/paper runtime state only
-- `POST /stop` — stop runtime
-- `POST /kill` — emergency stop; requires `X-Admin-Token`
+## Backtesting caveats
+The backtester is a research baseline, not evidence of a profitable strategy. Supply broker-correct tick size/value, lot constraints, account-currency conversion, spread, commission and slippage. It does not yet model swaps, financing, partial fills, variable spreads, latency, margin liquidation, multi-currency conversion or portfolio-level correlated exposure. Results must be independently reconciled with broker data before use.
 
-## Next engineering gates
+## Remaining production gates
+1. Validate OANDA market-data freshness, rate limits and provider outages against live read-only practice credentials.
+2. Add robust account-currency conversion and broker contract metadata for each symbol.
+3. Add a true paper execution ledger and event/audit store.
+4. Add portfolio exposure/correlation and daily loss circuit breakers.
+5. Implement the seven agents as deterministic, testable modules with an orchestrator; current role list is metadata, not autonomous agents.
+6. Run out-of-sample and walk-forward research with multiple market regimes.
+7. Only after independent review, consider a separately isolated MT5 Windows worker. It must have its own hard risk gate, idempotency, reconciliation, kill switch and explicit operator enablement.
 
-1. Add deterministic historical-data adapters with provenance and freshness checks.
-2. Build reproducible backtests with spread, commission, slippage, and out-of-sample validation.
-3. Implement portfolio-level risk controls and an immutable audit trail.
-4. Run MT5 connectivity from a dedicated Windows host/worker; the Linux API container must not pretend to be an MT5 terminal.
-5. Paper-trade and independently validate before considering any live execution integration.
-
-No profitability or accuracy is guaranteed. Never put API keys, broker passwords, or account identifiers in source control or chat.
+No return or accuracy is promised. Do not run live funds based on backtest output.
