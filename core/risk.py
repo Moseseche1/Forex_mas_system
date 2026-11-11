@@ -1,6 +1,7 @@
-"""Conservative lot sizing from broker tick economics."""
+"""Conservative lot sizing using decimal broker tick economics."""
 from dataclasses import dataclass
-from math import floor, isfinite
+from decimal import Decimal, ROUND_FLOOR
+from math import isfinite
 
 @dataclass(frozen=True)
 class SizingResult:
@@ -11,11 +12,11 @@ class SizingResult:
     stop_distance: float
     reason: str
 
-def size_position(*, equity: float, risk_fraction: float, entry_price: float,
-                  stop_price: float, tick_size: float, tick_value_per_lot: float,
-                  volume_min: float, volume_max: float, volume_step: float) -> SizingResult:
-    vals=(equity,risk_fraction,entry_price,stop_price,tick_size,tick_value_per_lot,volume_min,volume_max,volume_step)
-    if not all(isfinite(float(v)) for v in vals):
+def size_position(*, equity:float, risk_fraction:float, entry_price:float,
+                  stop_price:float, tick_size:float, tick_value_per_lot:float,
+                  volume_min:float, volume_max:float, volume_step:float)->SizingResult:
+    values=(equity,risk_fraction,entry_price,stop_price,tick_size,tick_value_per_lot,volume_min,volume_max,volume_step)
+    if not all(isfinite(float(v)) for v in values):
         raise ValueError("All sizing inputs must be finite")
     if equity<=0 or not 0<risk_fraction<=.01:
         raise ValueError("Equity must be positive and risk_fraction must be in (0, 1%]")
@@ -23,14 +24,23 @@ def size_position(*, equity: float, risk_fraction: float, entry_price: float,
         raise ValueError("Entry and stop must be positive and different")
     if min(tick_size,tick_value_per_lot,volume_min,volume_step)<=0 or volume_max<volume_min:
         raise ValueError("Invalid broker tick or volume metadata")
-    distance=abs(entry_price-stop_price)
-    budget=equity*risk_fraction
-    loss_per_lot=(distance/tick_size)*tick_value_per_lot
+
+    D=Decimal
+    distance=abs(D(str(entry_price))-D(str(stop_price)))
+    budget=D(str(equity))*D(str(risk_fraction))
+    tick=D(str(tick_size)); tick_value=D(str(tick_value_per_lot))
+    step=D(str(volume_step)); minimum=D(str(volume_min)); maximum=D(str(volume_max))
+    loss_per_lot=(distance/tick)*tick_value
     raw=budget/loss_per_lot
-    volume=min(volume_max,floor((raw+1e-12)/volume_step)*volume_step)
-    if volume+1e-12<volume_min:
-        return SizingResult(False,0.0,budget,0.0,distance,"Minimum broker volume would exceed risk budget")
-    loss=volume*loss_per_lot
-    if loss>budget+max(1e-8,budget*1e-9):
-        return SizingResult(False,0.0,budget,loss,distance,"Rounded volume breaches risk budget")
-    return SizingResult(True,round(volume,8),budget,loss,distance,"Approved within configured risk limit")
+    steps=int((raw/step).to_integral_value(rounding=ROUND_FLOOR))
+    max_steps=int((maximum/step).to_integral_value(rounding=ROUND_FLOOR))
+    volume=step*min(steps,max_steps)
+    if volume<minimum:
+        return SizingResult(False,0.0,float(budget),0.0,float(distance),
+          "Minimum broker volume would exceed the risk budget")
+    estimated_loss=volume*loss_per_lot
+    if estimated_loss>budget:
+        return SizingResult(False,0.0,float(budget),float(estimated_loss),float(distance),
+          "Rounded volume breaches the risk budget")
+    return SizingResult(True,float(volume),float(budget),float(estimated_loss),
+      float(distance),"Approved within configured risk limit")
