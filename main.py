@@ -11,6 +11,7 @@ from core.risk import size_position
 from core.backtest import run_backtest
 from core.signals import ema_crossover, rsi
 from services.market_data import market_data_service, MarketDataUnavailable
+from agents.engine import analyze_market
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger=logging.getLogger("olympus_fx")
@@ -121,6 +122,17 @@ async def backtest(request:BacktestRequest):
 async def ema_signal(request:SignalRequest):
     try: return {"signals":ema_crossover(request.closes,request.fast,request.slow),"rsi_14":rsi(request.closes,14),"live_orders_sent":False}
     except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+class AgentAnalysisRequest(BaseModel):
+    closes:list[float]=Field(min_length=30,max_length=100000)
+    risk_fraction:float=Field(default=.01,gt=0,le=.01)
+    current_drawdown:float=Field(default=0,ge=0,lt=1)
+    max_bar_volatility:float=Field(default=.01,gt=0)
+
+@app.post("/agents/analyze")
+async def analyze_agents(request:AgentAnalysisRequest):
+    try: return analyze_market(**request.model_dump())
+    except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+
 @app.get("/market/status")
 async def market_status():
     return market_data_service.get_service_status()
