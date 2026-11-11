@@ -21,12 +21,18 @@ def test_dashboard():
     r=client.get("/dashboard")
     assert r.status_code==200 and "PAPER MODE ONLY" in r.text
 def test_risk_api():
-    r=client.post("/risk/position-size",json={"equity":100,"risk_fraction":.01,"entry_price":1.1,"stop_price":1.09,"tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,"volume_step":.01})
+    r=client.post("/risk/position-size",json={"equity":100,"risk_fraction":.01,"entry_price":1.1,"stop_price":1.099,"tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,"volume_step":.01})
     assert r.status_code==200 and r.json()["approved"] and r.json()["estimated_loss"]<=1
 def test_backtest_api():
     bars=[{"open":1.1,"high":1.101,"low":1.099,"close":1.1},{"open":1.1,"high":1.1045,"low":1.0995,"close":1.104},{"open":1.104,"high":1.105,"low":1.103,"close":1.104}]
     r=client.post("/backtest",json={"bars":bars,"signals":[1,0,0]})
     assert r.status_code==200 and r.json()["trade_count"]==1 and r.json()["assumptions"]["live_orders_sent"] is False
+def test_market_data_fails_closed_without_credentials(monkeypatch):
+    monkeypatch.setattr(settings,"OANDA_API_KEY","")
+    monkeypatch.setattr(settings,"OANDA_ACCOUNT_ID","")
+    assert client.get("/market/status").json()["synthetic_fallback"] is False
+    assert client.get("/market/quote/EURUSD").status_code==503
+
 def test_signal_api():
     r=client.post("/signals/ema-crossover",json={"closes":[1,1,1,1,2,3,4,5],"fast":2,"slow":4})
     assert r.status_code==200 and len(r.json()["signals"])==8
