@@ -199,7 +199,8 @@ class PaperCloseRequest(BaseModel):
     exit_price: float = Field(gt=0)
 
 @app.post("/paper/orders")
-async def create_paper_order(request: PaperOrderRequest):
+async def create_paper_order(request: PaperOrderRequest, x_admin_token: str | None = Header(default=None)):
+    _require_admin(x_admin_token)
     now = datetime.now(timezone.utc)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     realized_today = paper_ledger.realized_pnl_since(day_start)
@@ -234,13 +235,15 @@ async def create_paper_order(request: PaperOrderRequest):
     return {"mode":"paper","broker_order_sent":False,"position":position,"sizing":asdict(sizing)}
 
 @app.get("/paper/positions")
-async def list_paper_positions(status: str | None = None):
+async def list_paper_positions(status: str | None = None, x_admin_token: str | None = Header(default=None)):
+    _require_admin(x_admin_token)
     if status not in (None, "open", "closed"):
         raise HTTPException(status_code=422, detail="status must be open or closed")
     return {"mode":"paper","broker_orders_sent":0,"positions":paper_ledger.list_positions(status)}
 
 @app.post("/paper/positions/{position_id}/close")
-async def close_paper_position(position_id: str, request: PaperCloseRequest):
+async def close_paper_position(position_id: str, request: PaperCloseRequest, x_admin_token: str | None = Header(default=None)):
+    _require_admin(x_admin_token)
     try:
         position = paper_ledger.close_position(position_id, request.exit_price)
     except ValueError as exc:
@@ -250,7 +253,8 @@ async def close_paper_position(position_id: str, request: PaperCloseRequest):
     return {"mode":"paper","broker_order_sent":False,"position":position}
 
 @app.get("/paper/risk")
-async def paper_risk_status(day_start_equity: float = Query(gt=0)):
+async def paper_risk_status(day_start_equity: float = Query(gt=0), x_admin_token: str | None = Header(default=None)):
+    _require_admin(x_admin_token)
     now=datetime.now(timezone.utc)
     day_start=now.replace(hour=0,minute=0,second=0,microsecond=0).isoformat()
     realized=paper_ledger.realized_pnl_since(day_start)
