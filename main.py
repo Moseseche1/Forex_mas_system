@@ -1,5 +1,7 @@
 """Olympus FX API — research and paper-trading only; no broker orders."""
 import logging
+import hmac
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 from dataclasses import asdict
@@ -21,12 +23,17 @@ class Runtime:
     def __init__(self):
         self.running=False; self.started_at=None; self.cycles_completed=0; self.last_error=None
 runtime=Runtime()
-app=FastAPI(title="Olympus FX",version="0.2.0",description="Research and paper-trading API. Live broker execution is disabled.")
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    logger.info("Olympus FX ready in paper-only mode")
+    yield
+    runtime.running=False
+app=FastAPI(title="Olympus FX",version="0.2.0",description="Research and paper-trading API. Live broker execution is disabled.",lifespan=lifespan)
 
 def _now(): return datetime.now(timezone.utc).isoformat()
 def _require_admin(token):
     expected=settings.KILL_SWITCH_TOKEN
-    if not expected or not token or token!=expected: raise HTTPException(status_code=401,detail="Valid X-Admin-Token required")
+    if not expected or not token or not hmac.compare_digest(token,expected): raise HTTPException(status_code=401,detail="Valid X-Admin-Token required")
 
 class RiskRequest(BaseModel):
     equity:float=Field(gt=0)
@@ -155,7 +162,3 @@ async def market_candles(symbol:str,granularity:str="M5",count:int=500):
 @app.get("/dashboard",response_class=HTMLResponse)
 async def dashboard():
     return """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Olympus FX</title><style>body{font:16px system-ui;background:#0b1220;color:#e7edf7;margin:0;padding:32px}main{max-width:900px;margin:auto}section{background:#172338;padding:24px;border-radius:16px}.pill{display:inline-block;padding:6px 12px;border-radius:20px;background:#244b43}a{color:#9cc7ff}</style></head><body><main><h1>OLYMPUS FX</h1><p>Multi-agent forex research platform</p><section><span class="pill">PAPER MODE ONLY</span><h2>Execution safeguard</h2><p>Live broker order submission is disabled. No trades are sent from this service.</p><p><a href="/health">Health</a> · <a href="/status">Status</a> · <a href="/docs">API docs</a></p></section></main></body></html>"""
-@app.on_event("startup")
-async def startup_event(): logger.info("Olympus FX ready in paper-only mode")
-@app.on_event("shutdown")
-async def shutdown_event(): runtime.running=False
