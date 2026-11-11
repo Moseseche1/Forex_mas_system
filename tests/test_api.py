@@ -36,3 +36,11 @@ def test_market_data_fails_closed_without_credentials(monkeypatch):
 def test_signal_api():
     r=client.post("/signals/ema-crossover",json={"closes":[1,1,1,1,2,3,4,5],"fast":2,"slow":4})
     assert r.status_code==200 and len(r.json()["signals"])==8
+
+def test_multi_agent_analysis_and_risk_veto():
+    rising=[1.0+i*.001 for i in range(40)]
+    r=client.post("/agents/analyze",json={"closes":rising,"risk_fraction":.01,"current_drawdown":0})
+    assert r.status_code==200
+    assert r.json()["execution"]["live_orders_sent"] is False
+    blocked=client.post("/agents/analyze",json={"closes":rising,"risk_fraction":.01,"current_drawdown":.04})
+    assert blocked.status_code==200 and blocked.json()["decision"]=="no_trade"
