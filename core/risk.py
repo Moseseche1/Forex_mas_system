@@ -14,7 +14,7 @@ class SizingResult:
 
 def size_position(*, equity:float, risk_fraction:float, entry_price:float,
                   stop_price:float, tick_size:float, tick_value_per_lot:float,
-                  volume_min:float, volume_max:float, volume_step:float)->SizingResult:
+                  volume_min:float, volume_max:float, volume_step:float,estimated_cost_per_lot:float=0.0)->SizingResult:
     values=(equity,risk_fraction,entry_price,stop_price,tick_size,tick_value_per_lot,volume_min,volume_max,volume_step,estimated_cost_per_lot)
     if not all(isfinite(float(v)) for v in values):
         raise ValueError("All sizing inputs must be finite")
