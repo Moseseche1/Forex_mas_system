@@ -31,7 +31,7 @@ class PositionSizer:
         portfolio_correlation:float=0.0,*,entry_price:float|None=None,
         stop_price:float|None=None,tick_size:float|None=None,
         tick_value_per_lot:float|None=None,volume_min:float|None=None,
-        volume_max:float|None=None,volume_step:float|None=None)->dict:
+        volume_max:float|None=None,volume_step:float|None=None,estimated_cost_per_lot:float=0.0)->dict:
         blocked={"approved":False,"position_size":0.0,"volume_lots":0.0,
           "risk_percentage":0.0,"risk_amount":0.0,"reason":"Missing broker tick/stop metadata; fail closed"}
         if current_drawdown>=self.risk_params.max_daily_drawdown:
@@ -44,7 +44,7 @@ class PositionSizer:
             sized=size_position(equity=account_balance,risk_fraction=self.risk_params.max_trade_risk,
               entry_price=entry_price,stop_price=stop_price,tick_size=tick_size,
               tick_value_per_lot=tick_value_per_lot,volume_min=volume_min,
-              volume_max=volume_max,volume_step=volume_step)
+              volume_max=volume_max,volume_step=volume_step,estimated_cost_per_lot=estimated_cost_per_lot)
         except (ValueError,TypeError) as exc:
             blocked["reason"]=str(exc); return blocked
         return {"approved":sized.approved,"position_size":sized.volume_lots,
@@ -99,7 +99,7 @@ class AdvancedRiskManager:
           entry_price=market_data.get("entry_price"),stop_price=market_data.get("stop_price"),
           tick_size=market_data.get("tick_size"),tick_value_per_lot=market_data.get("tick_value_per_lot"),
           volume_min=market_data.get("volume_min"),volume_max=market_data.get("volume_max"),
-          volume_step=market_data.get("volume_step"))
+          volume_step=market_data.get("volume_step"),estimated_cost_per_lot=market_data.get("estimated_cost_per_lot",0.0))
     def should_enter_trade(self,account_info,market_data,strategy_metrics,open_positions):
         return self.risk_monitor.should_enter_trade(
           account_info.get("equity",account_info.get("balance",0)),
