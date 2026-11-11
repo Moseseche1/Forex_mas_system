@@ -94,17 +94,17 @@ async def health(): return {"status":"ok","api":"healthy","timestamp":_now()}
 @app.get("/status")
 async def status():
     return {"system_running":runtime.running,"trading_mode":"paper","live_trading_enabled":False,
-      "total_agents":len(AGENT_ROLES),"active_agents":len(AGENT_ROLES) if runtime.running else 0,
-      "agents":[{"agent_id":i,"role":role,"active":runtime.running,"state":"research_only","orders_submitted":0} for i,role in enumerate(AGENT_ROLES)],
+      "total_agents":len(AGENT_ROLES),"active_agents":0,"configured_agents":len(AGENT_ROLES),"execution_workers_active":False,
+      "agents":[{"agent_id":i,"role":role,"active":False,"state":"on_demand_research_only","orders_submitted":0} for i,role in enumerate(AGENT_ROLES)],
       "cycles_completed":runtime.cycles_completed,"started_at":runtime.started_at,"last_error":runtime.last_error,"timestamp":_now()}
 @app.get("/agent/{agent_id}")
 async def get_agent(agent_id:int):
     if agent_id<0 or agent_id>=len(AGENT_ROLES): raise HTTPException(status_code=404,detail="Agent not found")
-    return {"agent_id":agent_id,"strategy":AGENT_ROLES[agent_id],"active":runtime.running,"state":"research_only","orders_submitted":0}
+    return {"agent_id":agent_id,"strategy":AGENT_ROLES[agent_id],"active":False,"state":"on_demand_research_only","orders_submitted":0}
 @app.post("/start")
 async def start_system():
     runtime.running=True; runtime.started_at=runtime.started_at or _now()
-    return {"status":"started","mode":"paper","live_trading_enabled":False}
+    return {"status":"research_runtime_enabled","mode":"paper","agents_started":False,"live_trading_enabled":False}
 @app.post("/stop")
 async def stop_system():
     runtime.running=False
