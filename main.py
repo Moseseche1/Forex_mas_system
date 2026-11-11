@@ -203,8 +203,9 @@ async def create_paper_order(request: PaperOrderRequest, x_admin_token: str | No
     _require_admin(x_admin_token)
     now = datetime.now(timezone.utc)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    day_equity = paper_ledger.get_or_set_day_start_equity(day_start[:10], request.day_start_equity)
     realized_today = paper_ledger.realized_pnl_since(day_start)
-    daily_loss_limit = request.day_start_equity * settings.MAX_DRAWDOWN
+    daily_loss_limit = day_equity * settings.MAX_DRAWDOWN
     if realized_today <= -daily_loss_limit:
         raise HTTPException(status_code=409, detail="Daily paper loss limit reached; new positions are blocked")
     try:
@@ -232,7 +233,7 @@ async def create_paper_order(request: PaperOrderRequest, x_admin_token: str | No
         commission_per_lot=request.commission_per_lot,
         risk_budget=sizing.risk_budget, estimated_loss=sizing.estimated_loss,
     )
-    return {"mode":"paper","broker_order_sent":False,"position":position,"sizing":asdict(sizing)}
+    return {"mode":"paper","broker_order_sent":False,"day_start_equity":day_equity,"position":position,"sizing":asdict(sizing)}
 
 @app.get("/paper/positions")
 async def list_paper_positions(status: str | None = None, x_admin_token: str | None = Header(default=None)):
@@ -257,10 +258,11 @@ async def paper_risk_status(day_start_equity: float = Query(gt=0), x_admin_token
     _require_admin(x_admin_token)
     now=datetime.now(timezone.utc)
     day_start=now.replace(hour=0,minute=0,second=0,microsecond=0).isoformat()
+    day_equity=paper_ledger.get_or_set_day_start_equity(day_start[:10], day_start_equity)
     realized=paper_ledger.realized_pnl_since(day_start)
-    return {"mode":"paper","realized_pnl_today":realized,
-            "daily_loss_limit":day_start_equity*settings.MAX_DRAWDOWN,
-            "new_orders_allowed":realized > -(day_start_equity*settings.MAX_DRAWDOWN),
+    return {"mode":"paper","realized_pnl_today":realized,"day_start_equity":day_equity,
+            "daily_loss_limit":day_equity*settings.MAX_DRAWDOWN,
+            "new_orders_allowed":realized > -(day_equity*settings.MAX_DRAWDOWN),
             "live_trading_enabled":False}
 
 @app.get("/dashboard",response_class=HTMLResponse)
