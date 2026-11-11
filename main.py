@@ -113,7 +113,7 @@ async def risk_position_size(request:RiskRequest):
 async def backtest(request:BacktestRequest):
     try:
         payload=request.model_dump()
-        bars=[b.model_dump() for b in payload.pop("bars")]
+        bars=payload.pop("bars")
         signals=payload.pop("signals")
         return run_backtest(bars,signals,**payload)
     except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
