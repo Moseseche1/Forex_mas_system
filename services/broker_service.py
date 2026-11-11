@@ -26,3 +26,6 @@ class MT5TradingService:
 
 MT5BrokerService=MT5TradingService
 mt5_trading_service=MT5TradingService()
+
+# Legacy variable name retained; this instance is disabled and read-only.
+mt5_broker_service=MT5TradingService()
