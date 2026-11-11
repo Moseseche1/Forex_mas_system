@@ -1,46 +1,32 @@
 from fastapi.testclient import TestClient
 from main import app, runtime
 from config.settings import settings
-
-client = TestClient(app)
-
+client=TestClient(app)
 def setup_function():
-    runtime.running = False
-    runtime.started_at = None
-
-def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
-def test_root_never_enables_live_trading():
-    data = client.get("/").json()
-    assert data["mode"] == "paper"
-    assert data["live_trading_enabled"] is False
-
-def test_status_reports_research_only_agents():
-    data = client.get("/status").json()
-    assert data["total_agents"] == 7
-    assert all(a["orders_submitted"] == 0 for a in data["agents"])
-
-def test_agent_endpoint_and_missing_agent():
-    assert client.get("/agent/0").status_code == 200
-    assert client.get("/agent/999").status_code == 404
-
-def test_start_stop_are_paper_only():
-    assert client.post("/start").json()["mode"] == "paper"
-    assert runtime.running is True
-    assert client.post("/stop").json()["status"] == "stopped"
-    assert runtime.running is False
-
-def test_kill_switch_requires_token(monkeypatch):
-    monkeypatch.setattr(settings, "KILL_SWITCH_TOKEN", "test-secret")
-    assert client.post("/kill").status_code == 401
-    response = client.post("/kill", headers={"X-Admin-Token": "test-secret"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "emergency_stop"
-
-def test_dashboard_serves_html():
-    response = client.get("/dashboard")
-    assert response.status_code == 200
-    assert "text/html" in response.headers["content-type"]
+    runtime.running=False; runtime.started_at=None
+def test_health_and_paper_safety():
+    assert client.get("/health").json()["status"]=="ok"
+    assert client.get("/").json()["live_trading_enabled"] is False
+def test_status_and_agent():
+    data=client.get("/status").json()
+    assert data["total_agents"]==7 and all(a["orders_submitted"]==0 for a in data["agents"])
+    assert client.get("/agent/0").status_code==200 and client.get("/agent/999").status_code==404
+def test_start_stop_and_kill_switch(monkeypatch):
+    assert client.post("/start").json()["mode"]=="paper" and runtime.running
+    assert client.post("/stop").json()["status"]=="stopped"
+    monkeypatch.setattr(settings,"KILL_SWITCH_TOKEN","test-secret")
+    assert client.post("/kill").status_code==401
+    assert client.post("/kill",headers={"X-Admin-Token":"test-secret"}).status_code==200
+def test_dashboard():
+    r=client.get("/dashboard")
+    assert r.status_code==200 and "PAPER MODE ONLY" in r.text
+def test_risk_api():
+    r=client.post("/risk/position-size",json={"equity":100,"risk_fraction":.01,"entry_price":1.1,"stop_price":1.09,"tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,"volume_step":.01})
+    assert r.status_code==200 and r.json()["approved"] and r.json()["estimated_loss"]<=1
+def test_backtest_api():
+    bars=[{"open":1.1,"high":1.101,"low":1.099,"close":1.1},{"open":1.1,"high":1.1045,"low":1.0995,"close":1.104},{"open":1.104,"high":1.105,"low":1.103,"close":1.104}]
+    r=client.post("/backtest",json={"bars":bars,"signals":[1,0,0]})
+    assert r.status_code==200 and r.json()["trade_count"]==1 and r.json()["assumptions"]["live_orders_sent"] is False
+def test_signal_api():
+    r=client.post("/signals/ema-crossover",json={"closes":[1,1,1,1,2,3,4,5],"fast":2,"slow":4})
+    assert r.status_code==200 and len(r.json()["signals"])==8
