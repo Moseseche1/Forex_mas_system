@@ -27,3 +27,10 @@ def test_backtest_rejects_invalid_ohlc():
 def test_risk_rejects_non_finite_values():
  with pytest.raises(ValueError):
   size_position(equity=float("nan"),risk_fraction=.01,entry_price=1.1,stop_price=1.099,tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
+
+def test_legacy_risk_manager_fails_closed_without_broker_metadata():
+ from utils.risk_manager import RiskParameters, PositionSizer
+ s=PositionSizer(RiskParameters())
+ result=s.calculate_position_size(account_balance=100,current_drawdown=0,
+   market_volatility=.001,strategy_confidence=.9,symbol_volatility=.001)
+ assert result["approved"] is False and result["position_size"]==0
