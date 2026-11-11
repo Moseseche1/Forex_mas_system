@@ -34,3 +34,12 @@ def test_legacy_risk_manager_fails_closed_without_broker_metadata():
  result=s.calculate_position_size(account_balance=100,current_drawdown=0,
    market_volatility=.001,strategy_confidence=.9,symbol_volatility=.001)
  assert result["approved"] is False and result["position_size"]==0
+
+def test_transaction_costs_reduce_position_size():
+    base=size_position(equity=1000,risk_fraction=.01,entry_price=1.1,stop_price=1.099,
+      tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01)
+    with_costs=size_position(equity=1000,risk_fraction=.01,entry_price=1.1,stop_price=1.099,
+      tick_size=.0001,tick_value_per_lot=10,volume_min=.01,volume_max=100,volume_step=.01,
+      estimated_cost_per_lot=5)
+    assert with_costs.approved and with_costs.volume_lots<=base.volume_lots
+    assert with_costs.estimated_loss<=with_costs.risk_budget
