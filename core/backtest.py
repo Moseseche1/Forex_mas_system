@@ -1,6 +1,7 @@
 """OHLC backtester. Signal at close i enters at next bar open; stop wins intrabar ties."""
 from dataclasses import asdict,dataclass
 from math import isfinite
+from decimal import Decimal, ROUND_FLOOR
 
 @dataclass
 class Trade:
@@ -28,9 +29,14 @@ def run_backtest(bars:list[dict],signals:list[int],*,initial_equity:float=1000.0
         if not d: i+=1; curve.append(equity); continue
         entry=(float(bars[i+1]["open"])+(spread/2+slippage)*d)
         stop=entry-d*stop_distance; target=entry+d*stop_distance*reward_risk
-        budget=equity*risk_fraction; losslot=stop_distance/tick_size*tick_value_per_lot
-        lots=min(volume_max,int((budget/losslot+1e-12)/volume_step)*volume_step)
-        if lots<volume_min: i+=1; curve.append(equity); continue
+        budget=Decimal(str(equity))*Decimal(str(risk_fraction))
+        transaction_cost=(Decimal(str(spread+2*slippage))/Decimal(str(tick_size))*Decimal(str(tick_value_per_lot))+Decimal(str(commission_per_lot)))
+        losslot=Decimal(str(stop_distance))/Decimal(str(tick_size))*Decimal(str(tick_value_per_lot))+transaction_cost
+        step=Decimal(str(volume_step)); min_lot=Decimal(str(volume_min)); max_lot=Decimal(str(volume_max))
+        lot_steps=int((budget/losslot/step).to_integral_value(rounding=ROUND_FLOOR))
+        max_steps=int((max_lot/step).to_integral_value(rounding=ROUND_FLOOR))
+        lots=float(step*min(lot_steps,max_steps))
+        if Decimal(str(lots))<min_lot: i+=1; curve.append(equity); continue
         exitp=None; reason="end_of_data"; exitidx=len(bars)-1
         for j in range(i+1,len(bars)):
             hi=float(bars[j]["high"]); lo=float(bars[j]["low"])
