@@ -17,7 +17,7 @@ class Settings:
     UPDATE_INTERVAL = max(5, int(os.getenv("UPDATE_INTERVAL", "30")))
     TOTAL_AGENTS = max(1, min(50, int(os.getenv("TOTAL_AGENTS", "7"))))
     RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.01"))
-    MAX_DRAWDOWN = float(os.getenv("MAX_DRAWDOWN", "0.03"))
+    MAX_DRAWDOWN = min(0.03, max(0.001, float(os.getenv("MAX_DRAWDOWN", "0.03"))))
     MT5_ACCOUNT_LOGIN = os.getenv("MT5_ACCOUNT_LOGIN", "")
     MT5_ACCOUNT_PASSWORD = os.getenv("MT5_ACCOUNT_PASSWORD", "")
     MT5_ACCOUNT_SERVER = os.getenv("MT5_ACCOUNT_SERVER", "")
@@ -31,6 +31,7 @@ class Settings:
     OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "")
     OANDA_API_URL = os.getenv("OANDA_API_URL", "https://api-fxpractice.oanda.com").rstrip("/")
     FX_SYMBOLS = os.getenv("FX_SYMBOLS", "EURUSD,GBPUSD,USDJPY").split(",")
+    PAPER_LEDGER_PATH = os.getenv("PAPER_LEDGER_PATH", ".data/olympus_paper.sqlite3")
 
     @property
     def is_production(self) -> bool:
