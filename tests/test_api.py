@@ -9,7 +9,8 @@ def test_health_and_paper_safety():
     assert client.get("/").json()["live_trading_enabled"] is False
 def test_status_and_agent():
     data=client.get("/status").json()
-    assert data["total_agents"]==7 and all(a["orders_submitted"]==0 for a in data["agents"])
+    assert data["total_agents"]==7 and data["active_agents"]==0 and data["execution_workers_active"] is False
+    assert all(a["orders_submitted"]==0 and not a["active"] for a in data["agents"])
     assert client.get("/agent/0").status_code==200 and client.get("/agent/999").status_code==404
 def test_start_stop_and_kill_switch(monkeypatch):
     assert client.post("/start").json()["mode"]=="paper" and runtime.running
