@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 from dataclasses import asdict
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, model_validator
 from config.settings import settings
@@ -250,13 +250,13 @@ async def close_paper_position(position_id: str, request: PaperCloseRequest):
     return {"mode":"paper","broker_order_sent":False,"position":position}
 
 @app.get("/paper/risk")
-async def paper_risk_status():
+async def paper_risk_status(day_start_equity: float = Query(gt=0)):
     now=datetime.now(timezone.utc)
     day_start=now.replace(hour=0,minute=0,second=0,microsecond=0).isoformat()
     realized=paper_ledger.realized_pnl_since(day_start)
     return {"mode":"paper","realized_pnl_today":realized,
-            "max_daily_drawdown_fraction":settings.MAX_DRAWDOWN,
-            "new_orders_allowed":True if realized > 0 else True,
+            "daily_loss_limit":day_start_equity*settings.MAX_DRAWDOWN,
+            "new_orders_allowed":realized > -(day_start_equity*settings.MAX_DRAWDOWN),
             "live_trading_enabled":False}
 
 @app.get("/dashboard",response_class=HTMLResponse)
