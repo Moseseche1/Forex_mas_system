@@ -17,7 +17,7 @@ class Settings:
     UPDATE_INTERVAL = max(5, int(os.getenv("UPDATE_INTERVAL", "30")))
     TOTAL_AGENTS = max(1, min(50, int(os.getenv("TOTAL_AGENTS", "7"))))
     RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.01"))
-    MAX_DRAWDOWN = float(os.getenv("MAX_DRAWDOWN", "0.03"))
+    MAX_DRAWDOWN = min(0.03, max(0.001, float(os.getenv("MAX_DRAWDOWN", "0.03"))))
     MT5_ACCOUNT_LOGIN = os.getenv("MT5_ACCOUNT_LOGIN", "")
     MT5_ACCOUNT_PASSWORD = os.getenv("MT5_ACCOUNT_PASSWORD", "")
     MT5_ACCOUNT_SERVER = os.getenv("MT5_ACCOUNT_SERVER", "")
