@@ -1,5 +1,6 @@
 """Read-only OANDA market-data adapter. Fails closed when credentials are absent."""
 from datetime import datetime, timezone
+from math import isfinite
 import logging
 import httpx
 from config.settings import settings
@@ -45,7 +46,7 @@ class MarketDataService:
         if not bids or not asks:
             raise MarketDataUnavailable(f"Incomplete bid/ask quote for {instrument}")
         bid=float(bids[0]["price"]); ask=float(asks[0]["price"])
-        if bid<=0 or ask<bid:
+        if not isfinite(bid) or not isfinite(ask) or bid<=0 or ask<bid:
             raise MarketDataUnavailable("Provider returned invalid bid/ask values")
         return {"symbol":symbol.upper(),"bid":bid,"ask":ask,"spread":ask-bid,
           "mid":(bid+ask)/2,"timestamp":quote.get("time"),
@@ -70,8 +71,10 @@ class MarketDataService:
             if not candle.get("complete"): continue
             mid=candle.get("mid") or {}
             if not all(k in mid for k in ("o","h","l","c")): continue
-            result.append({"timestamp":candle["time"],"open":float(mid["o"]),
-              "high":float(mid["h"]),"low":float(mid["l"]),"close":float(mid["c"]),
+            o,h,l,c=(float(mid[k]) for k in ("o","h","l","c"))
+            if not all(isfinite(x) and x>0 for x in (o,h,l,c)) or h<max(o,c) or l>min(o,c) or h<l:
+                continue
+            result.append({"timestamp":candle["time"],"open":o,"high":h,"low":l,"close":c,
               "volume":int(candle.get("volume",0)),"source":"oanda"})
         if not result:
             raise MarketDataUnavailable("Provider returned no complete historical candles")
