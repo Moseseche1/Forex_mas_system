@@ -114,3 +114,6 @@ class AdvancedRiskManager:
         sign=1 if direction=="long" else -1
         return {"stop_loss":entry_price-sign*distance,"take_profit":entry_price+sign*distance*2,
           "stop_distance":distance,"reward_risk_ratio":2.0}
+
+# Compatibility singleton; fail-closed defaults are enforced by RiskParameters.
+risk_manager=AdvancedRiskManager()
