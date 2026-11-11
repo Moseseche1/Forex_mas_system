@@ -73,6 +73,8 @@ def test_paper_order_rejects_over_budget_minimum_lot(monkeypatch, tmp_path):
     from core.paper_ledger import PaperLedger
     import main
     monkeypatch.setattr(main, "paper_ledger", PaperLedger(str(tmp_path/"paper.sqlite3")))
+    monkeypatch.setattr(settings, "KILL_SWITCH_TOKEN", "paper-secret")
+    headers={"X-Admin-Token":"paper-secret"}
     payload={"symbol":"EURUSD","side":"long","equity":10,"day_start_equity":10,
       "risk_fraction":.01,"entry_price":1.1,"stop_price":1.09,
       "tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,
