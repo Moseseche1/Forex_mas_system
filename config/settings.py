@@ -31,6 +31,7 @@ class Settings:
     OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "")
     OANDA_API_URL = os.getenv("OANDA_API_URL", "https://api-fxpractice.oanda.com").rstrip("/")
     FX_SYMBOLS = os.getenv("FX_SYMBOLS", "EURUSD,GBPUSD,USDJPY").split(",")
+    PAPER_LEDGER_PATH = os.getenv("PAPER_LEDGER_PATH", ".data/olympus_paper.sqlite3")
 
     @property
     def is_production(self) -> bool:
