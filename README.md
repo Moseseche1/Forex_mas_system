@@ -8,8 +8,8 @@ This release is **research/paper-only**. It does not submit broker orders. Legac
 - Seven role-labelled research agents (runtime registry only; no autonomous LLM agents yet).
 - Deterministic EMA crossover and RSI calculations.
 - Position sizing from broker tick economics, rounding volume down and rejecting a minimum lot that breaches the risk budget.
-- OHLC backtesting with next-bar entries, spread, slippage, commission and conservative stop-first handling when both stop and target are touched.
-- CSV historical-price ingestion with OHLC validation.
+- OHLC backtesting with next-bar entries, spread, slippage, commission included in position sizing and conservative stop-first handling when both stop and target are touched.
+- CSV historical-price ingestion with OHLC and strictly increasing ISO timestamp validation.
 - Optional OANDA read-only quotes and completed candles. Configure `OANDA_API_KEY`, `OANDA_ACCOUNT_ID`, and optionally `OANDA_API_URL`. Practice API is the default. No order endpoints are implemented.
 
 ## Run locally
