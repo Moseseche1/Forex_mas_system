@@ -219,7 +219,8 @@ async def create_paper_order(request: PaperOrderRequest, x_admin_token: str | No
             volume_min=request.volume_min,
             volume_max=request.volume_max,
             volume_step=request.volume_step,
-            estimated_cost_per_lot=request.estimated_cost_per_lot,
+            # Include the configured round-trip commission in pre-trade risk sizing.
+            estimated_cost_per_lot=request.estimated_cost_per_lot + request.commission_per_lot,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
