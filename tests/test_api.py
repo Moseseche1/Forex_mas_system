@@ -22,7 +22,7 @@ def test_dashboard():
     r=client.get("/dashboard")
     assert r.status_code==200 and "PAPER MODE ONLY" in r.text
 def test_risk_api():
-    r=client.post("/risk/position-size",json={"equity":100,"risk_fraction":.01,"entry_price":1.1,"stop_price":1.099,"tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,"volume_step":.01})
+    r=client.post("/risk/position-size",json={"equity":100,"risk_fraction":.01,"entry_price":1.1,"stop_price":1.099,"tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,"volume_step":.01,"estimated_cost_per_lot":0})
     assert r.status_code==200 and r.json()["approved"] and r.json()["estimated_loss"]<=1
 def test_backtest_api():
     bars=[{"open":1.1,"high":1.101,"low":1.099,"close":1.1},{"open":1.1,"high":1.1045,"low":1.0995,"close":1.104},{"open":1.104,"high":1.105,"low":1.103,"close":1.104}]
