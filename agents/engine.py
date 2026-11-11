@@ -1,11 +1,11 @@
 """Explainable specialist-agent ensemble; produces research signals only."""
-from math import sqrt
+from math import sqrt, isfinite
 from core.signals import ema, rsi
 
 def analyze_market(closes:list[float], *, risk_fraction:float=.01,
                    current_drawdown:float=0.0, max_bar_volatility:float=.01)->dict:
     if len(closes)<30: raise ValueError("At least 30 closing prices are required")
-    if any(float(x)<=0 for x in closes): raise ValueError("Prices must be positive")
+    if any(not isfinite(float(x)) or float(x)<=0 for x in closes): raise ValueError("Prices must be positive")
     if not 0<risk_fraction<=.01: raise ValueError("Risk per trade must be in (0, 1%]")
     if not 0<=current_drawdown<1: raise ValueError("Drawdown must be between 0 and 1")
     if max_bar_volatility<=0: raise ValueError("Volatility threshold must be positive")
