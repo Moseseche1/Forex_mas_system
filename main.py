@@ -17,7 +17,7 @@ from agents.engine import analyze_market
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger=logging.getLogger("olympus_fx")
-AGENT_ROLES=["executive","market_intelligence","macro_research","quantitative_research","strategy","risk","portfolio"]
+AGENT_ROLES=["executive","market_intelligence","quantitative_research","market_regime","volatility","risk","portfolio"]
 
 class Runtime:
     def __init__(self):
