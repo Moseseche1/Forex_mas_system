@@ -25,6 +25,6 @@ jobs:
       - name: Run all maintained tests
         run: pytest -q
       - name: Compile application
-        run: python -m compileall -q main.py config core services tests
+        run: python -m compileall -q .
       - name: Build container
         run: docker build -t olympus-fx:ci .
