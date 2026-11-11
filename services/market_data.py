@@ -48,10 +48,20 @@ class MarketDataService:
         bid=float(bids[0]["price"]); ask=float(asks[0]["price"])
         if not isfinite(bid) or not isfinite(ask) or bid<=0 or ask<bid:
             raise MarketDataUnavailable("Provider returned invalid bid/ask values")
+        retrieved=datetime.now(timezone.utc)
+        source_time=quote.get("time")
+        fresh=False
+        if source_time:
+            try:
+                parsed=datetime.fromisoformat(source_time.replace("Z","+00:00"))
+                if parsed.tzinfo is None: parsed=parsed.replace(tzinfo=timezone.utc)
+                fresh=(retrieved-parsed.astimezone(timezone.utc)).total_seconds()<=60
+            except ValueError:
+                fresh=False
         return {"symbol":symbol.upper(),"bid":bid,"ask":ask,"spread":ask-bid,
-          "mid":(bid+ask)/2,"timestamp":quote.get("time"),
+          "mid":(bid+ask)/2,"timestamp":source_time,"is_fresh":fresh,
           "source":"oanda","tradeable":bool(quote.get("tradeable",False)),
-          "retrieved_at":datetime.now(timezone.utc).isoformat(),"read_only":True}
+          "retrieved_at":retrieved.isoformat(),"read_only":True}
 
     async def get_historical_data(self,symbol:str="EURUSD",granularity:str="M5",count:int=500)->list[dict]:
         token,account=self._credentials()
