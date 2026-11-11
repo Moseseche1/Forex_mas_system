@@ -55,7 +55,8 @@ class MarketDataService:
             try:
                 parsed=datetime.fromisoformat(source_time.replace("Z","+00:00"))
                 if parsed.tzinfo is None: parsed=parsed.replace(tzinfo=timezone.utc)
-                fresh=(retrieved-parsed.astimezone(timezone.utc)).total_seconds()<=60
+                age=(retrieved-parsed.astimezone(timezone.utc)).total_seconds()
+                fresh=-5<=age<=60
             except ValueError:
                 fresh=False
         return {"symbol":symbol.upper(),"bid":bid,"ask":ask,"spread":ask-bid,
