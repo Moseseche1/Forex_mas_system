@@ -1,54 +1,33 @@
-name: Forex MAS CI/CD Pipeline
+name: Olympus FX CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, "hardening/**"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build-test-deploy:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout code
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      # Step 2: Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-
-      # Step 3: Install dependencies
+          python-version: "3.11"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov flake8
-
-      # Step 4: Linting
-      - name: Lint code
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-
-      # Step 5: Run unit tests (both folders)
-      - name: Run unit tests
-        run: |
-          echo "Running tests from original folder..."
-          if [ -d "tests" ]; then pytest tests/ -v; else echo "No tests folder found"; fi
-
-          echo "Running tests from new folder..."
-          if [ -d "tests_new" ]; then pytest tests_new/ -v; else echo "No tests_new folder found"; fi
-
-      # Step 6: Build Docker image (optional)
+      - name: Run API regression tests
+        run: pytest -q tests/
+      - name: Compile Python
+        run: python -m compileall -q main.py config tests
       - name: Build Docker image
-        run: |
-          if [ -f Dockerfile ]; then docker build -t forex_mas_system .; else echo "No Dockerfile found"; fi
-
-      # Step 7: Deploy placeholder
-      - name: Deploy placeholder
-        run: |
-          echo "✅ Deployment stage reached — customize this step for your deployment method."
+        run: docker build -t olympus-fx:ci .
