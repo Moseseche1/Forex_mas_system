@@ -16,7 +16,7 @@ def test_paper_ledger_persists_and_closes(tmp_path):
     closed=reopened.close_position(position["id"],1.101)
     assert closed["status"]=="closed"
     assert closed["realized_pnl"]==pytest.approx(9.3)
-    assert reopened.realized_pnl_since("2000-01-01T00:00:00+00:00")==pytest.approx(1.3)
+    assert reopened.realized_pnl_since("2000-01-01T00:00:00+00:00")==pytest.approx(9.3)
     with pytest.raises(ValueError):
         reopened.close_position(position["id"],1.102)
 
