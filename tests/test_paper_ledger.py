@@ -23,3 +23,9 @@ def test_paper_ledger_persists_and_closes(tmp_path):
 def test_paper_ledger_missing_position(tmp_path):
     ledger=PaperLedger(str(tmp_path/"paper.sqlite3"))
     assert ledger.close_position("not-found",1.2) is None
+
+def test_daily_equity_baseline_is_immutable(tmp_path):
+    ledger=PaperLedger(str(tmp_path/"paper.sqlite3"))
+    assert ledger.get_or_set_day_start_equity("2026-11-11",1000)==1000
+    assert ledger.get_or_set_day_start_equity("2026-11-11",5000)==1000
+    assert ledger.get_or_set_day_start_equity("2026-11-12",5000)==5000
