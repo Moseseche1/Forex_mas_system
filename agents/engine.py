@@ -30,9 +30,10 @@ def analyze_market(closes:list[float], *, risk_fraction:float=.01,
     decision="no_trade" if veto or not aligned else direction
     confidence=(max(votes.count("long"),votes.count("short"))/len(votes)) if aligned else 0.0
     return {"decision":decision,"confidence":confidence,"agents":{
-      "trend":{"state":trend,"ema_fast":fast,"ema_slow":slow},
-      "momentum":{"state":momentum,"rsi_14":momentum_value},
+      "market_intelligence":{"state":trend,"ema_fast":fast,"ema_slow":slow},
+      "quantitative_research":{"state":momentum,"rsi_14":momentum_value},
+      "market_regime":{"state":"high_volatility" if volatility_agent["trade_veto"] else "directional" if trend!="neutral" else "ranging"},
       "volatility":volatility_agent,"risk":risk_agent,
       "portfolio":{"state":"consensus" if aligned else "no_consensus","votes":votes,"veto":veto},
-      "executive":{"recommendation":decision,"explanation":"At least two directional research agents must agree; risk and volatility agents can veto."}},
+      "executive":{"recommendation":decision,"explanation":"Trend and momentum research agents must agree; risk and volatility agents can veto."}},
       "execution":{"mode":"research_only","live_orders_sent":False}}
