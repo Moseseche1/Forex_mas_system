@@ -2,6 +2,7 @@
 from __future__ import annotations
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,7 +10,7 @@ class PaperLedger:
     def __init__(self, database_path: str):
         self.database_path = database_path
         Path(database_path).parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as db:
+        with self._db() as db:
             db.execute("""
                 CREATE TABLE IF NOT EXISTS paper_positions (
                     id TEXT PRIMARY KEY,
@@ -34,11 +35,19 @@ class PaperLedger:
             db.execute("CREATE INDEX IF NOT EXISTS idx_paper_status ON paper_positions(status)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_paper_opened ON paper_positions(opened_at)")
 
-    def _connect(self):
+    @contextmanager
+    def _db(self):
         db = sqlite3.connect(self.database_path, timeout=10)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout=10000")
-        return db
+        try:
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     @staticmethod
     def _serialize(row):
@@ -49,7 +58,7 @@ class PaperLedger:
                         risk_budget, estimated_loss):
         position_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
-        with self._connect() as db:
+        with self._db() as db:
             db.execute("""
                 INSERT INTO paper_positions
                 (id,symbol,side,volume_lots,entry_price,stop_price,target_price,
