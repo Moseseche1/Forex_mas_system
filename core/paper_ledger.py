@@ -76,7 +76,7 @@ class PaperLedger:
         return self._serialize(row)
 
     def get_position(self, position_id):
-        with self._connect() as db:
+        with self._db() as db:
             return self._serialize(db.execute(
                 "SELECT * FROM paper_positions WHERE id=?", (position_id,)
             ).fetchone())
