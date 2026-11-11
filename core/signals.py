@@ -5,6 +5,7 @@ def ema(values: list[float], period: int) -> list[float]:
     if period<1: raise ValueError("period must be >= 1")
     if not values: return []
     out=[float(values[0])]; alpha=2/(period+1)
+    if not isfinite(out[0]): raise ValueError("prices must be finite")
     for raw in values[1:]:
         value=float(raw)
         if not isfinite(value): raise ValueError("prices must be finite")
