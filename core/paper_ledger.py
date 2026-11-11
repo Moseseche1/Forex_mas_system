@@ -34,6 +34,10 @@ class PaperLedger:
             """)
             db.execute("CREATE INDEX IF NOT EXISTS idx_paper_status ON paper_positions(status)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_paper_opened ON paper_positions(opened_at)")
+            db.execute("""CREATE TABLE IF NOT EXISTS paper_daily_state (
+                utc_day TEXT PRIMARY KEY,
+                day_start_equity REAL NOT NULL CHECK(day_start_equity > 0)
+            )""")
 
     @contextmanager
     def _db(self):
@@ -84,6 +88,18 @@ class PaperLedger:
             else:
                 rows=db.execute("SELECT * FROM paper_positions ORDER BY opened_at DESC").fetchall()
         return [self._serialize(row) for row in rows]
+
+
+    def get_or_set_day_start_equity(self, utc_day, proposed_equity):
+        """Persist the first declared daily equity; later requests cannot raise the loss limit."""
+        with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row=db.execute("SELECT day_start_equity FROM paper_daily_state WHERE utc_day=?",(utc_day,)).fetchone()
+            if row:
+                return float(row["day_start_equity"])
+            db.execute("INSERT INTO paper_daily_state(utc_day,day_start_equity) VALUES(?,?)",
+                       (utc_day,float(proposed_equity)))
+            return float(proposed_equity)
 
     def realized_pnl_since(self, iso_timestamp):
         with self._connect() as db:
