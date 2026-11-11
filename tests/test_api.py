@@ -45,3 +45,52 @@ def test_multi_agent_analysis_and_risk_veto():
     assert r.json()["execution"]["live_orders_sent"] is False
     blocked=client.post("/agents/analyze",json={"closes":rising,"risk_fraction":.01,"current_drawdown":.04})
     assert blocked.status_code==200 and blocked.json()["decision"]=="no_trade"
+
+def test_paper_order_is_sized_and_never_sent_to_broker(monkeypatch, tmp_path):
+    from core.paper_ledger import PaperLedger
+    import main
+    monkeypatch.setattr(main, "paper_ledger", PaperLedger(str(tmp_path/"paper.sqlite3")))
+    payload={"symbol":"EURUSD","side":"long","equity":1000,"day_start_equity":1000,
+      "risk_fraction":.01,"entry_price":1.1,"stop_price":1.099,"target_price":1.102,
+      "tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,
+      "volume_step":.01,"estimated_cost_per_lot":1,"commission_per_lot":7}
+    response=client.post("/paper/orders",json=payload)
+    assert response.status_code==200
+    data=response.json()
+    assert data["broker_order_sent"] is False
+    assert data["position"]["status"]=="open"
+    assert data["position"]["volume_lots"] <= 1.0
+    position_id=data["position"]["id"]
+    closed=client.post(f"/paper/positions/{position_id}/close",json={"exit_price":1.101})
+    assert closed.status_code==200
+    assert closed.json()["broker_order_sent"] is False
+    assert closed.json()["position"]["status"]=="closed"
+    assert client.get("/paper/positions?status=closed").json()["positions"][0]["id"]==position_id
+
+def test_paper_order_rejects_over_budget_minimum_lot(monkeypatch, tmp_path):
+    from core.paper_ledger import PaperLedger
+    import main
+    monkeypatch.setattr(main, "paper_ledger", PaperLedger(str(tmp_path/"paper.sqlite3")))
+    payload={"symbol":"EURUSD","side":"long","equity":10,"day_start_equity":10,
+      "risk_fraction":.01,"entry_price":1.1,"stop_price":1.09,
+      "tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,
+      "volume_step":.01,"estimated_cost_per_lot":0}
+    assert client.post("/paper/orders",json=payload).status_code==409
+
+def test_paper_daily_loss_gate(monkeypatch, tmp_path):
+    from core.paper_ledger import PaperLedger
+    import main
+    monkeypatch.setattr(main, "paper_ledger", PaperLedger(str(tmp_path/"paper.sqlite3")))
+    now=__import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    start=now.replace(hour=0,minute=0,second=0,microsecond=0).isoformat()
+    main.paper_ledger.create_position(symbol="EURUSD",side="long",volume_lots=1,
+      entry_price=1.1,stop_price=1.099,target_price=None,tick_size=.0001,
+      tick_value_per_lot=10,commission_per_lot=0,risk_budget=1,estimated_loss=1)
+    pos=main.paper_ledger.list_positions("open")[0]
+    main.paper_ledger.close_position(pos["id"],1.096)
+    assert main.paper_ledger.realized_pnl_since(start) < -3
+    payload={"symbol":"EURUSD","side":"long","equity":1000,"day_start_equity":1000,
+      "risk_fraction":.01,"entry_price":1.1,"stop_price":1.099,
+      "tick_size":.0001,"tick_value_per_lot":10,"volume_min":.01,"volume_max":100,
+      "volume_step":.01,"estimated_cost_per_lot":0}
+    assert client.post("/paper/orders",json=payload).status_code==409
