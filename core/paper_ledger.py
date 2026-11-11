@@ -82,7 +82,7 @@ class PaperLedger:
             ).fetchone())
 
     def list_positions(self, status=None):
-        with self._connect() as db:
+        with self._db() as db:
             if status:
                 rows=db.execute("SELECT * FROM paper_positions WHERE status=? ORDER BY opened_at DESC",(status,)).fetchall()
             else:
@@ -102,7 +102,7 @@ class PaperLedger:
             return float(proposed_equity)
 
     def realized_pnl_since(self, iso_timestamp):
-        with self._connect() as db:
+        with self._db() as db:
             row=db.execute(
                 "SELECT COALESCE(SUM(realized_pnl),0) AS pnl FROM paper_positions WHERE status='closed' AND closed_at>=?",
                 (iso_timestamp,)
@@ -110,7 +110,7 @@ class PaperLedger:
         return float(row["pnl"])
 
     def close_position(self, position_id, exit_price):
-        with self._connect() as db:
+        with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
             row=db.execute("SELECT * FROM paper_positions WHERE id=?",(position_id,)).fetchone()
             if not row:
