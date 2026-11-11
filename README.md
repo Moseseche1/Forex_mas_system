@@ -40,6 +40,11 @@ pytest -q
 - `POST /risk/position-size` — risk-limited lot sizing
 - `POST /backtest` — deterministic OHLC simulation, no broker interaction
 - `POST /signals/ema-crossover` — deterministic research signals
+- `POST /agents/analyze` — explainable specialist-agent consensus and risk veto
+- `GET /market/status`, `/market/quote/{symbol}`, `/market/candles/{symbol}` — optional OANDA read-only data; returns 503 when unconfigured
+
+## Multi-agent research
+The initial ensemble is deterministic and explainable: trend (EMA), momentum (RSI), volatility and risk specialists feed a portfolio consensus. The executive role reports the result. It is not yet an autonomous LLM multi-agent system; no agent can submit orders.
 
 ## Backtesting caveats
 The backtester is a research baseline, not evidence of a profitable strategy. Supply broker-correct tick size/value, lot constraints, account-currency conversion, spread, commission and slippage. It does not yet model swaps, financing, partial fills, variable spreads, latency, margin liquidation, multi-currency conversion or portfolio-level correlated exposure. Results must be independently reconciled with broker data before use.
