@@ -10,6 +10,7 @@ from config.settings import settings
 from core.risk import size_position
 from core.backtest import run_backtest
 from core.signals import ema_crossover, rsi
+from services.market_data import market_data_service, MarketDataUnavailable
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger=logging.getLogger("olympus_fx")
@@ -120,6 +121,25 @@ async def backtest(request:BacktestRequest):
 async def ema_signal(request:SignalRequest):
     try: return {"signals":ema_crossover(request.closes,request.fast,request.slow),"rsi_14":rsi(request.closes,14),"live_orders_sent":False}
     except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+@app.get("/market/status")
+async def market_status():
+    return market_data_service.get_service_status()
+@app.get("/market/quote/{symbol}")
+async def market_quote(symbol:str):
+    try: return await market_data_service.get_real_time_data(symbol)
+    except MarketDataUnavailable as exc: raise HTTPException(status_code=503,detail=str(exc))
+    except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+    except Exception as exc:
+        logger.exception("Market data provider request failed")
+        raise HTTPException(status_code=502,detail="Market data provider unavailable")
+@app.get("/market/candles/{symbol}")
+async def market_candles(symbol:str,granularity:str="M5",count:int=500):
+    try: return {"candles":await market_data_service.get_historical_data(symbol,granularity,count),"source":"oanda","read_only":True}
+    except MarketDataUnavailable as exc: raise HTTPException(status_code=503,detail=str(exc))
+    except ValueError as exc: raise HTTPException(status_code=422,detail=str(exc))
+    except Exception:
+        logger.exception("Historical market data request failed")
+        raise HTTPException(status_code=502,detail="Market data provider unavailable")
 @app.get("/dashboard",response_class=HTMLResponse)
 async def dashboard():
     return """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Olympus FX</title><style>body{font:16px system-ui;background:#0b1220;color:#e7edf7;margin:0;padding:32px}main{max-width:900px;margin:auto}section{background:#172338;padding:24px;border-radius:16px}.pill{display:inline-block;padding:6px 12px;border-radius:20px;background:#244b43}a{color:#9cc7ff}</style></head><body><main><h1>OLYMPUS FX</h1><p>Multi-agent forex research platform</p><section><span class="pill">PAPER MODE ONLY</span><h2>Execution safeguard</h2><p>Live broker order submission is disabled. No trades are sent from this service.</p><p><a href="/health">Health</a> · <a href="/status">Status</a> · <a href="/docs">API docs</a></p></section></main></body></html>"""
