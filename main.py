@@ -14,6 +14,7 @@ from core.backtest import run_backtest
 from core.signals import ema_crossover, rsi
 from services.market_data import market_data_service, MarketDataUnavailable
 from agents.engine import analyze_market
+from core.paper_ledger import PaperLedger
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger=logging.getLogger("olympus_fx")
@@ -23,6 +24,7 @@ class Runtime:
     def __init__(self):
         self.running=False; self.started_at=None; self.cycles_completed=0; self.last_error=None
 runtime=Runtime()
+paper_ledger=PaperLedger(settings.PAPER_LEDGER_PATH)
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     logger.info("Olympus FX ready in paper-only mode")
@@ -160,6 +162,103 @@ async def market_candles(symbol:str,granularity:str="M5",count:int=500):
     except Exception:
         logger.exception("Historical market data request failed")
         raise HTTPException(status_code=502,detail="Market data provider unavailable")
+
+class PaperOrderRequest(BaseModel):
+    symbol: str = Field(min_length=6, max_length=6, pattern=r"^[A-Za-z]{6}$")
+    side: str
+    equity: float = Field(gt=0)
+    day_start_equity: float = Field(gt=0)
+    risk_fraction: float = Field(gt=0, le=.01)
+    entry_price: float = Field(gt=0)
+    stop_price: float = Field(gt=0)
+    target_price: float | None = Field(default=None, gt=0)
+    tick_size: float = Field(gt=0)
+    tick_value_per_lot: float = Field(gt=0)
+    volume_min: float = Field(gt=0)
+    volume_max: float = Field(gt=0)
+    volume_step: float = Field(gt=0)
+    estimated_cost_per_lot: float = Field(ge=0)
+    commission_per_lot: float = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validate_direction(self):
+        if self.side not in ("long", "short"):
+            raise ValueError("side must be long or short")
+        if self.side == "long" and self.stop_price >= self.entry_price:
+            raise ValueError("Long stop must be below entry")
+        if self.side == "short" and self.stop_price <= self.entry_price:
+            raise ValueError("Short stop must be above entry")
+        if self.target_price is not None:
+            if self.side == "long" and self.target_price <= self.entry_price:
+                raise ValueError("Long target must be above entry")
+            if self.side == "short" and self.target_price >= self.entry_price:
+                raise ValueError("Short target must be below entry")
+        return self
+
+class PaperCloseRequest(BaseModel):
+    exit_price: float = Field(gt=0)
+
+@app.post("/paper/orders")
+async def create_paper_order(request: PaperOrderRequest):
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    realized_today = paper_ledger.realized_pnl_since(day_start)
+    daily_loss_limit = request.day_start_equity * settings.MAX_DRAWDOWN
+    if realized_today <= -daily_loss_limit:
+        raise HTTPException(status_code=409, detail="Daily paper loss limit reached; new positions are blocked")
+    try:
+        sizing = size_position(
+            equity=request.equity,
+            risk_fraction=request.risk_fraction,
+            entry_price=request.entry_price,
+            stop_price=request.stop_price,
+            tick_size=request.tick_size,
+            tick_value_per_lot=request.tick_value_per_lot,
+            volume_min=request.volume_min,
+            volume_max=request.volume_max,
+            volume_step=request.volume_step,
+            estimated_cost_per_lot=request.estimated_cost_per_lot,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not sizing.approved:
+        raise HTTPException(status_code=409, detail=sizing.reason)
+    position = paper_ledger.create_position(
+        symbol=request.symbol.upper(), side=request.side,
+        volume_lots=sizing.volume_lots, entry_price=request.entry_price,
+        stop_price=request.stop_price, target_price=request.target_price,
+        tick_size=request.tick_size, tick_value_per_lot=request.tick_value_per_lot,
+        commission_per_lot=request.commission_per_lot,
+        risk_budget=sizing.risk_budget, estimated_loss=sizing.estimated_loss,
+    )
+    return {"mode":"paper","broker_order_sent":False,"position":position,"sizing":asdict(sizing)}
+
+@app.get("/paper/positions")
+async def list_paper_positions(status: str | None = None):
+    if status not in (None, "open", "closed"):
+        raise HTTPException(status_code=422, detail="status must be open or closed")
+    return {"mode":"paper","broker_orders_sent":0,"positions":paper_ledger.list_positions(status)}
+
+@app.post("/paper/positions/{position_id}/close")
+async def close_paper_position(position_id: str, request: PaperCloseRequest):
+    try:
+        position = paper_ledger.close_position(position_id, request.exit_price)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if position is None:
+        raise HTTPException(status_code=404, detail="Paper position not found")
+    return {"mode":"paper","broker_order_sent":False,"position":position}
+
+@app.get("/paper/risk")
+async def paper_risk_status():
+    now=datetime.now(timezone.utc)
+    day_start=now.replace(hour=0,minute=0,second=0,microsecond=0).isoformat()
+    realized=paper_ledger.realized_pnl_since(day_start)
+    return {"mode":"paper","realized_pnl_today":realized,
+            "max_daily_drawdown_fraction":settings.MAX_DRAWDOWN,
+            "new_orders_allowed":True if realized > 0 else True,
+            "live_trading_enabled":False}
+
 @app.get("/dashboard",response_class=HTMLResponse)
 async def dashboard():
     return """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Olympus FX</title><style>body{font:16px system-ui;background:#0b1220;color:#e7edf7;margin:0;padding:32px}main{max-width:900px;margin:auto}section{background:#172338;padding:24px;border-radius:16px}.pill{display:inline-block;padding:6px 12px;border-radius:20px;background:#244b43}a{color:#9cc7ff}</style></head><body><main><h1>OLYMPUS FX</h1><p>Multi-agent forex research platform</p><section><span class="pill">PAPER MODE ONLY</span><h2>Execution safeguard</h2><p>Live broker order submission is disabled. No trades are sent from this service.</p><p><a href="/health">Health</a> · <a href="/status">Status</a> · <a href="/docs">API docs</a></p></section></main></body></html>"""
