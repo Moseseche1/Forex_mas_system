@@ -62,6 +62,9 @@ def test_paper_order_is_sized_and_never_sent_to_broker(monkeypatch, tmp_path):
     assert data["broker_order_sent"] is False
     assert data["position"]["status"]=="open"
     assert data["position"]["volume_lots"] <= 1.0
+    # Stop risk includes spread/other estimated costs plus the configured commission.
+    assert data["sizing"]["estimated_loss"] <= data["sizing"]["risk_budget"]
+    assert abs(data["position"]["volume_lots"] - .09) < 1e-9
     position_id=data["position"]["id"]
     closed=client.post(f"/paper/positions/{position_id}/close",json={"exit_price":1.101},headers=headers)
     assert closed.status_code==200
