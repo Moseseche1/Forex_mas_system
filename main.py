@@ -45,6 +45,7 @@ class RiskRequest(BaseModel):
     volume_min:float=Field(gt=0)
     volume_max:float=Field(gt=0)
     volume_step:float=Field(gt=0)
+    estimated_cost_per_lot:float=Field(default=0,ge=0)
 
 class Bar(BaseModel):
     open:float=Field(gt=0); high:float=Field(gt=0); low:float=Field(gt=0); close:float=Field(gt=0)
