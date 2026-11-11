@@ -53,6 +53,9 @@ The initial ensemble is deterministic and explainable: market-intelligence (EMA 
 ## Backtesting caveats
 The backtester is a research baseline, not evidence of a profitable strategy. Supply broker-correct tick size/value, lot constraints, account-currency conversion, spread, commission and slippage. It does not yet model swaps, financing, partial fills, variable spreads, latency, margin liquidation, multi-currency conversion or portfolio-level correlated exposure. Results must be independently reconciled with broker data before use.
 
+## Paper ledger access and risk boundaries
+Paper ledger routes require the configured KILL_SWITCH_TOKEN in the X-Admin-Token header. The first day-start equity supplied for each UTC date is persisted and cannot be increased by later requests. The daily realized-loss halt is hard-capped at 3%; unrealized P&L is not yet included.
+
 ## Remaining production gates
 1. Validate OANDA market-data freshness, rate limits and provider outages against live read-only practice credentials.
 2. Add robust account-currency conversion and broker contract metadata for each symbol.
